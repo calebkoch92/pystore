@@ -33,9 +33,9 @@ setup(
     version="0.1.23",
     description='Fast data store for Pandas timeseries data',
     long_description=long_description,
-    url='https://github.com/ranaroussi/pystore',
-    author='Ran Aroussi',
-    author_email='ran@aroussi.com',
+    url='https://github.com/calebkoch92/pystore',
+    author='Caleb Koch',
+    author_email='caleb.m.koch@gmail.com',
     license='Apache Software License',
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
