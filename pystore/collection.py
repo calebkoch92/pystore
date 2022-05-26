@@ -18,17 +18,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
+from typing import Any, Dict, Union
 
 import os
 import time
 import shutil
-import multitasking
 import pandas as pd
 
 from . import utils
 from .item import Item
-from . import config
 from .utils import make_path
 
 Tensor = Union[pd.Series, pd.DataFrame]
@@ -107,7 +105,7 @@ class Collection(object):
             utils.make_path(self.datastore, self.collection, metadata_path), metadata
         )
 
-    def append(self, item, data):
+    def append(self, item, data, metadata: Dict[str, Any] = None):
 
         if not utils.path_exists(self._item_path(item)):
             raise ValueError("""Item do not exists. Use `<collection>.write(...)`""")
@@ -122,7 +120,7 @@ class Collection(object):
         self.write(
             item,
             combined,
-            metadata=current.metadata,
+            metadata=current.metadata | metadata,
             overwrite=True,
         )
 
