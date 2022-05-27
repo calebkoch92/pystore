@@ -20,9 +20,6 @@
 
 from typing import Any, Dict, Union
 
-import os
-import time
-import shutil
 import pandas as pd
 
 from . import utils
@@ -40,7 +37,6 @@ class Collection(object):
         self.engine = engine
         self.datastore = datastore
         self.collection = collection
-        self.snapshots = self.list_snapshots()
 
     def _item_path(self, item, as_string=False):
         p = utils.make_path(self.datastore, self.collection, item)
@@ -71,6 +67,18 @@ class Collection(object):
 
         return set(matched)
 
+    def list_items_with_data(self):
+        dirs = utils.subdirs(utils.make_path(self.datastore, self.collection))
+        return set(
+            [
+                d
+                for d in dirs
+                if utils.make_path(
+                    self.datastore, self.collection, d, "metadata.json"
+                ).exists()
+            ]
+        )
+
     def item(self, item, snapshot=None, filters=None):
         return Item(
             item, self.datastore, self.collection, snapshot, filters, engine=self.engine
@@ -82,6 +90,7 @@ class Collection(object):
         data: Tensor,
         metadata: dict = None,
         overwrite: bool = False,
+        as_pickle: bool = False,
     ):
 
         metadata = metadata or {}
@@ -93,12 +102,18 @@ class Collection(object):
                 Otherwise, use `<collection>.append()`"""
             )
 
-        data_path = make_path(item, "data.parquet")
-        data.to_parquet(
-            self._item_path(data_path, as_string=True),
-            compression="snappy",
-            engine=self.engine,
-        )
+        if not as_pickle:
+            data_path = make_path(item, "data.parquet")
+            data.to_parquet(
+                self._item_path(data_path, as_string=True),
+                compression="snappy",
+                engine=self.engine,
+            )
+            metadata["as_pickle"] = False
+        else:
+            data_path = make_path(item, "data.pickle")
+            pd.to_pickle(data, self._item_path(data_path, as_string=True))
+            metadata["as_pickle"] = True
 
         metadata_path = make_path(item, "metadata.json")
         utils.write_metadata(
@@ -123,40 +138,3 @@ class Collection(object):
             metadata=current.metadata | metadata,
             overwrite=True,
         )
-
-    def create_snapshot(self, snapshot=None):
-        if snapshot:
-            snapshot = "".join(e for e in snapshot if e.isalnum() or e in [".", "_"])
-        else:
-            snapshot = str(int(time.time() * 1000000))
-
-        src = utils.make_path(self.datastore, self.collection)
-        dst = utils.make_path(src, "_snapshots", snapshot)
-
-        shutil.copytree(src, dst, ignore=shutil.ignore_patterns("_snapshots"))
-
-        self.snapshots = self.list_snapshots()
-        return True
-
-    def list_snapshots(self):
-        snapshots = utils.subdirs(
-            utils.make_path(self.datastore, self.collection, "_snapshots")
-        )
-        return set(snapshots)
-
-    def delete_snapshot(self, snapshot):
-        if snapshot not in self.snapshots:
-            return True
-
-        shutil.rmtree(
-            utils.make_path(self.datastore, self.collection, "_snapshots", snapshot)
-        )
-        self.snapshots = self.list_snapshots()
-        return True
-
-    def delete_snapshots(self):
-        snapshots_path = utils.make_path(self.datastore, self.collection, "_snapshots")
-        shutil.rmtree(snapshots_path)
-        os.makedirs(snapshots_path)
-        self.snapshots = self.list_snapshots()
-        return True

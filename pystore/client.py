@@ -27,7 +27,7 @@ class PyStoreClient:
         """
         Initialize PyStore client with database config.
         """
-        _ = set_path(filepath_to_database)
+        set_path(filepath_to_database)
         self.store = store(pystore_name)
         self.collection = self.store.collection(version)
 
@@ -50,7 +50,7 @@ class PyStoreClient:
         """
         metadata = metadata or {}
 
-        if always_overwrite or name not in self.collection.list_items():
+        if always_overwrite or name not in self.collection.list_items_with_data():
             self._write(name=name, data=data, metadata=metadata)
         else:
             self._append(name=name, data=data)
@@ -61,8 +61,12 @@ class PyStoreClient:
         smart appending.
         """
         metadata = metadata or {}
-        metadata["end_timestamp"] = self._get_end_timestamp(data)
-        self.collection.write(item=name, data=data, metadata=metadata)
+        metadata["end_timestamp"] = str(self._get_end_timestamp(data))
+
+        path = self.collection._item_path(name)
+        if not path.exists():
+            path.mkdir()
+        self.collection.write(item=name, data=data, metadata=metadata, overwrite=True)
 
     def _append(self, name: str, data: Any):
         """

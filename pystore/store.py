@@ -38,7 +38,9 @@ class store(object):
         self.datastore = utils.make_path(datastore_path, datastore)
         if not utils.path_exists(self.datastore):
             os.makedirs(self.datastore)
-            utils.write_metadata(self.datastore, {"engine": engine})
+            utils.write_metadata(
+                utils.make_path(self.datastore, "metadata.json"), {"engine": engine}
+            )
             self.engine = engine
         else:
             metadata = utils.read_metadata(self.datastore)
@@ -47,7 +49,10 @@ class store(object):
             else:
                 # default / backward compatibility
                 self.engine = "fastparquet"
-                utils.write_metadata(self.datastore, {"engine": self.engine})
+                utils.write_metadata(
+                    utils.make_path(self.datastore, "metadata.json"),
+                    {"engine": self.engine},
+                )
 
         self.collections = self.list_collections()
 

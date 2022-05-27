@@ -28,24 +28,18 @@ class Item(object):
         self.snapshot = snapshot
         self.item = item
 
-        self._path = utils.make_path(datastore, collection, item, "data.parquet")
         self._metadata_path = utils.make_path(datastore, collection, item)
+        self.metadata = utils.read_metadata(self._metadata_path)
 
-        if not self._path.exists():
+        if not self._metadata_path.exists():
             raise ValueError(
                 "Item `%s` doesn't exist. "
                 "Create it using collection.write(`%s`, data, ...)" % (item, item)
             )
-        if snapshot:
-            snap_path = utils.make_path(datastore, collection, "_snapshots", snapshot)
 
-            self._path = utils.make_path(snap_path, item)
-
-            if not utils.path_exists(snap_path):
-                raise ValueError("Snapshot `%s` doesn't exist" % snapshot)
-
-            if not utils.path_exists(self._path):
-                raise ValueError("Item `%s` doesn't exist in this snapshot" % item)
-
-        self.metadata = utils.read_metadata(self._metadata_path)
-        self.data = pd.read_parquet(self._path, engine=self.engine, filters=filters)
+        if not self.metadata["as_pickle"]:
+            self._path = utils.make_path(datastore, collection, item, "data.parquet")
+            self.data = pd.read_parquet(self._path, engine=self.engine, filters=filters)
+        else:
+            self._path = utils.make_path(datastore, collection, item, "data.pickle")
+            self.data = pd.read_pickle(self._path)
