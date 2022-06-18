@@ -20,6 +20,7 @@
 
 from typing import Any, Dict, Union
 
+import numpy as np
 import pandas as pd
 
 from . import utils
@@ -27,6 +28,7 @@ from .item import Item
 from .utils import make_path
 
 Tensor = Union[pd.Series, pd.DataFrame]
+Numeric = [np.dtype("float32"), np.dtype("float64"), np.dtype("int64")]
 
 
 class Collection(object):
@@ -79,10 +81,11 @@ class Collection(object):
             ]
         )
 
-    def item(self, item, snapshot=None, filters=None):
-        return Item(
-            item, self.datastore, self.collection, snapshot, filters, engine=self.engine
-        )
+    def item(self, item: str):
+        """
+        Return an instance of the item.
+        """
+        return Item(item=item, datastore=self.datastore, collection=self.collection)
 
     def write(
         self,
@@ -90,51 +93,55 @@ class Collection(object):
         data: Tensor,
         metadata: dict = None,
         overwrite: bool = False,
-        as_pickle: bool = False,
     ):
 
         metadata = metadata or {}
+        metadata["file_type"] = self._infer_file_type_from_data(data)
 
-        if utils.path_exists(self._item_path(item)) and not overwrite:
+        path = self._item_path(item)
+        if path.exists() and not overwrite:
             raise ValueError(
                 """
                 Item already exists. To overwrite, use `overwrite=True`.
                 Otherwise, use `<collection>.append()`"""
             )
 
-        if not as_pickle:
-            data_path = make_path(item, "data.parquet")
-            data.to_parquet(
-                self._item_path(data_path, as_string=True),
-                compression="snappy",
-                engine=self.engine,
-            )
-            metadata["as_pickle"] = False
-        else:
-            data_path = make_path(item, "data.pickle")
-            pd.to_pickle(data, self._item_path(data_path, as_string=True))
-            metadata["as_pickle"] = True
+        data_path = make_path(item, "data." + metadata["file_type"])
+        data_path = self._item_path(data_path, as_string=True)
+        if metadata["file_type"] == "parquet":
+            data.to_parquet(data_path, compression="snappy", engine=self.engine)
+        elif metadata["file_type"] == "pickle":
+            pd.to_pickle(data, data_path)
 
         metadata_path = make_path(item, "metadata.json")
         utils.write_metadata(
             utils.make_path(self.datastore, self.collection, metadata_path), metadata
         )
 
-    def append(self, item, data, metadata: Dict[str, Any] = None):
-
-        if not utils.path_exists(self._item_path(item)):
-            raise ValueError("""Item do not exists. Use `<collection>.write(...)`""")
-
-        current = pd.read_parquet(
-            self._item_path(item, as_string=True), engine=self.engine
-        )
-        combined = current.append(data)
-
-        current = self.item(item)
-
+    def append(self, item: str, data: Tensor, metadata: Dict[str, Any] = None):
+        """
+        Append data to existing data.
+        """
+        metadata = metadata or {}
+        existing_item = self.item(item)
         self.write(
-            item,
-            combined,
-            metadata=current.metadata | metadata,
+            item=item,
+            data=existing_item.data.append(data),
+            metadata=existing_item.metadata | metadata,
             overwrite=True,
         )
+
+    @staticmethod
+    def _infer_file_type_from_data(df: Tensor) -> str:
+        """
+        Infer the correct file type, given the data itself. The general goal is to read/write using parquet, unless
+        known problems exist.
+        """
+        if isinstance(df, pd.Series):
+            return "pickle"
+        elif df.index.nlevels > 1:
+            return "pickle"
+        elif any([type(t) not in Numeric for t in df.dtypes]):
+            return "pickle"
+        else:
+            return "parquet"

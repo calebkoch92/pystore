@@ -25,38 +25,51 @@ from . import utils
 from .collection import Collection
 
 
-class store(object):
+class PyStore(object):
+    """
+    The main store object used for retrieving data. A "PyStore" contains "Collection"s,
+    and "Collection"s contain(s) "Item"s.
+    """
+
     def __repr__(self):
+        """
+        String representation of PyStore object.
+        """
         return "PyStore.datastore <%s>" % self.datastore
 
-    def __init__(self, datastore, engine="fastparquet"):
+    def __init__(self, datastore: str):
+        """
+        Parameters
+        -------------
+        datastore: str
+            String name of the PyStore database.
+        """
 
         datastore_path = utils.get_path()
         if not utils.path_exists(datastore_path):
             os.makedirs(datastore_path)
 
         self.datastore = utils.make_path(datastore_path, datastore)
+
+        # Create PyStore metadata, if it doesn't exist
         if not utils.path_exists(self.datastore):
             os.makedirs(self.datastore)
             utils.write_metadata(
-                utils.make_path(self.datastore, "metadata.json"), {"engine": engine}
+                utils.make_path(self.datastore, "metadata.json"),
+                {"engine": "fastparquet"},
             )
-            self.engine = engine
+            self.engine = "fastparquet"
         else:
+            # Otherwise retrieve PyStore metadata
             metadata = utils.read_metadata(self.datastore)
-            if metadata:
-                self.engine = metadata["engine"]
-            else:
-                # default / backward compatibility
-                self.engine = "fastparquet"
-                utils.write_metadata(
-                    utils.make_path(self.datastore, "metadata.json"),
-                    {"engine": self.engine},
-                )
+            self.engine = metadata["engine"]
 
         self.collections = self.list_collections()
 
-    def _create_collection(self, collection, overwrite=False):
+    def _create_collection(self, collection, overwrite: bool = False):
+        """
+        Create collection instance.
+        """
         # create collection (subdir)
         collection_path = utils.make_path(self.datastore, collection)
         if utils.path_exists(collection_path):
@@ -70,32 +83,37 @@ class store(object):
         os.makedirs(collection_path)
         os.makedirs(utils.make_path(collection_path, "_snapshots"))
 
-        # update collections
         self.collections = self.list_collections()
-
-        # return the collection
         return Collection(collection, self.datastore)
 
     def delete_collection(self, collection):
-        # delete collection (subdir)
+        """
+        Delete a collection and all of its items.
+        """
         shutil.rmtree(utils.make_path(self.datastore, collection))
 
-        # update collections
         self.collections = self.list_collections()
         return True
 
     def list_collections(self):
-        # lists collections (subdirs)
+        """
+        See the list of collections contained in this PyStore.
+        """
         return utils.subdirs(self.datastore)
 
-    def collection(self, collection, overwrite=False):
+    def collection(self, collection: str, overwrite: bool = False):
+        """
+        Get a collection instance, denoted by its string name.
+        """
         if collection in self.collections and not overwrite:
             return Collection(collection, self.datastore, self.engine)
 
-        # create it
+        # create collection if it doesn't already exist.
         self._create_collection(collection, overwrite)
         return Collection(collection, self.datastore, self.engine)
 
-    def item(self, collection, item):
-        # bypasses collection
+    def item(self, collection: str, item: str):
+        """
+        Allow data retrieval with a (collection: str, item: str) pair.
+        """
         return self.collection(collection).item(item)

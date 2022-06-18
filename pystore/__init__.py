@@ -24,7 +24,7 @@ try:
 except ImportError:
     pass
 
-from .store import store
+from .store import PyStore
 from .utils import (
     read_csv,
     set_path,

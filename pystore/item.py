@@ -4,32 +4,49 @@
 PyStore: Flat-file datastore for timeseries data
 """
 
+from typing import Union
+
+from functools import cached_property
 import pandas as pd
 
 from . import utils
 
+Tensor = Union[pd.Series, pd.DataFrame]
+
 
 class Item(object):
+    """
+    A class object representing data in the database. Item has two key properties:
+    """
+
     def __repr__(self):
         return "PyStore.item <%s/%s>" % (self.collection, self.item)
 
     def __init__(
         self,
-        item,
-        datastore,
-        collection,
-        snapshot=None,
-        filters=None,
-        engine="fastparquet",
+        item: str,
+        datastore: str,
+        collection: str,
     ):
-        self.engine = engine
+        """
+        Parameters
+        -----------
+        item: str
+            The name of the item as stored in the database.
+
+        datastore: str
+            The name of the datastore.
+
+        collection: str
+            The name of the collection.
+
+        Note that the file type is inferred from information in the metadata.
+        """
         self.datastore = datastore
         self.collection = collection
-        self.snapshot = snapshot
         self.item = item
 
         self._metadata_path = utils.make_path(datastore, collection, item)
-        self.metadata = utils.read_metadata(self._metadata_path)
 
         if not self._metadata_path.exists():
             raise ValueError(
@@ -37,9 +54,20 @@ class Item(object):
                 "Create it using collection.write(`%s`, data, ...)" % (item, item)
             )
 
-        if not self.metadata["as_pickle"]:
-            self._path = utils.make_path(datastore, collection, item, "data.parquet")
-            self.data = pd.read_parquet(self._path, engine=self.engine, filters=filters)
+        self.metadata = utils.read_metadata(self._metadata_path)
+        self.file_type = self.metadata["file_type"]
+        self._data_path = utils.make_path(
+            datastore, collection, item, "data." + self.file_type
+        )
+
+    @cached_property
+    def data(self) -> Tensor:
+        """
+        Return the data from the database.
+        """
+        if self.file_type == "parquet":
+            return pd.read_parquet(self._data_path, engine="fastparquet")
+        elif self.file_type == "pickle":
+            return pd.read_pickle(self._data_path)
         else:
-            self._path = utils.make_path(datastore, collection, item, "data.pickle")
-            self.data = pd.read_pickle(self._path)
+            ValueError("The file type could not be inferred from the metadata.")

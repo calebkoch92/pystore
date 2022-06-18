@@ -8,13 +8,14 @@ Created on Wed Mar 16 08:59:16 2022
 
 from typing import Any, Dict, Union
 
-from kedro.pipeline.node import Node
+import os
 
 from agora.time import TIME_RESOLUTION, TimeRange, TS
 from agora.pandas import Tensor
+from kedro.pipeline.node import Node
 
 from .item import Item
-from .store import store
+from .store import PyStore
 from .utils import set_path
 
 
@@ -27,8 +28,9 @@ class PyStoreClient:
         """
         Initialize PyStore client with database config.
         """
+        filepath_to_database = os.path.expanduser(filepath_to_database)
         set_path(filepath_to_database)
-        self.store = store(pystore_name)
+        self.store = PyStore(pystore_name)
         self.collection = self.store.collection(version)
 
     def read(self, name: Union[Node, str]) -> Item:
@@ -55,14 +57,18 @@ class PyStoreClient:
         else:
             self._append(name=name, data=data)
 
-    def _write(self, name: str, data: Any, metadata: Dict[str, Any] = None):
+    def _write(
+        self,
+        name: str,
+        data: Any,
+        metadata: Dict[str, Any] = None,
+    ):
         """
         Write data to dataspace. Importantly, "end_timestamp" is added to metadata to enable
         smart appending.
         """
         metadata = metadata or {}
         metadata["end_timestamp"] = str(self._get_end_timestamp(data))
-
         path = self.collection._item_path(name)
         if not path.exists():
             path.mkdir()
