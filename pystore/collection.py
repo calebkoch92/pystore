@@ -71,15 +71,18 @@ class Collection(object):
 
     def list_items_with_data(self):
         dirs = utils.subdirs(utils.make_path(self.datastore, self.collection))
-        return set(
-            [
-                d
-                for d in dirs
-                if utils.make_path(
-                    self.datastore, self.collection, d, "metadata.json"
-                ).exists()
-            ]
-        )
+        try:
+            return set(
+                [
+                    d
+                    for d in dirs
+                    if utils.make_path(
+                        self.datastore, self.collection, d, "metadata.json"
+                    ).exists()
+                ]
+            )
+        except FileNotFoundError:
+            return None
 
     def item(self, item: str):
         """
