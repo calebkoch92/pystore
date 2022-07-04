@@ -4,9 +4,9 @@
 PyStore: Flat-file datastore for timeseries data
 """
 
+from functools import cached_property
 from typing import Union
 
-from functools import cached_property
 import pandas as pd
 
 from . import utils

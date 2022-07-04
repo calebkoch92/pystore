@@ -26,16 +26,16 @@ except ImportError:
 
 from .store import PyStore
 from .utils import (
-    read_csv,
-    set_path,
-    get_path,
-    set_client,
-    get_client,
-    set_partition_size,
-    get_partition_size,
-    list_stores,
     delete_store,
     delete_stores,
+    get_client,
+    get_partition_size,
+    get_path,
+    list_stores,
+    read_csv,
+    set_client,
+    set_partition_size,
+    set_path,
 )
 
 __version__ = "0.1.23"

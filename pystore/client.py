@@ -6,12 +6,11 @@ Created on Wed Mar 16 08:59:16 2022
 @author: caleb_m_koch
 """
 
+import os
 from typing import Any, Dict, Union
 
-import os
-
-from agora.time import TIME_RESOLUTION, TimeRange, TS
 from agora.pandas import Tensor
+from agora.time import TIME_RESOLUTION, TS, TimeRange
 from kedro.pipeline.node import Node
 
 from .item import Item

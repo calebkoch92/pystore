@@ -130,7 +130,7 @@ class Collection(object):
         self.write(
             item=item,
             data=existing_item.data.append(data),
-            metadata=existing_item.metadata | metadata,
+            metadata={**existing_item.metadata, **metadata},
             overwrite=True,
         )
 

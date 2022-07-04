@@ -4,13 +4,13 @@
 This file tests the PyStore client.
 """
 
+import shutil
+from pathlib import Path
 from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import pytest
-import shutil
 
 from pystore.client import PyStoreClient
 from pystore.tests.utils import ClassToBeWritten
