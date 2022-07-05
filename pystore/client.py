@@ -9,8 +9,8 @@ Created on Wed Mar 16 08:59:16 2022
 import os
 from typing import Any, Dict, Union
 
-from agora.pandas import Tensor
-from agora.time import TIME_RESOLUTION, TS, TimeRange
+from infinite.agora.pandas import Tensor
+from infinite.agora.time import TIME_RESOLUTION, TS, TimeRange
 from kedro.pipeline.node import Node
 
 from .item import Item
